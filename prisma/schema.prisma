@@ -1,0 +1,166 @@
+// This is your Prisma schema file,
+// learn more about it in the docs https//pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate https//pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int                 @id @default(autoincrement())
+  name      String
+  email     String              @unique
+  password  String
+  image     String?
+  nominated NomineeRating[]
+  reported  InstitutionRating[]
+  createdAt DateTime            @default(now())
+  comments  Comment[]
+}
+
+model Nominee {
+  id            Int             @id @default(autoincrement())
+  name          String
+  positionId    Int
+  institutionId Int
+  districtId    Int
+  image         String?
+  rating        NomineeRating[]
+  position      Position        @relation(fields: [positionId], references: [id])
+  institution   Institution     @relation(fields: [institutionId], references: [id])
+  district      District        @relation(fields: [districtId], references: [id])
+  status        Boolean         @default(false)
+  evidence      String? // Nullable field for storing evidence
+  createdAt     DateTime        @default(now())
+  comments      Comment[]
+}
+
+model Position {
+  id        Int       @id @default(autoincrement())
+  name      String
+  nominees  Nominee[]
+  createdAt DateTime  @default(now())
+}
+
+model Institution {
+  id       Int       @id @default(autoincrement())
+  name     String
+  image    String?
+  status   Boolean   @default(false)
+  nominees Nominee[]
+  comments Comment[]
+
+  rating    InstitutionRating[]
+  createdAt DateTime            @default(now())
+}
+
+model District {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  region    String
+  nominees  Nominee[]
+  createdAt DateTime  @default(now())
+}
+
+enum Severity {
+  Minor       @map("1")
+  Moderate    @map("2")
+  Significant @map("3")
+  Severe      @map("4")
+  Critical    @map("5")
+}
+
+model NomineeRating {
+  id               Int            @id @default(autoincrement())
+  userId           Int
+  nomineeId        Int
+  ratingCategoryId Int
+  score            Int
+  severity         Int
+  evidence         String
+  createdAt        DateTime       @default(now())
+  nominee          Nominee        @relation(fields: [nomineeId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+  ratingCategory   RatingCategory @relation(fields: [ratingCategoryId], references: [id])
+}
+
+model InstitutionRating {
+  id               Int            @id @default(autoincrement())
+  userId           Int
+  institutionId    Int
+  ratingCategoryId Int
+  score            Int
+  severity         Int
+  evidence         String
+  createdAt        DateTime       @default(now())
+  institution      Institution    @relation(fields: [institutionId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+  ratingCategory   RatingCategory @relation(fields: [ratingCategoryId], references: [id])
+}
+
+model Department {
+  id         Int              @id @default(autoincrement())
+  name       String
+  categories RatingCategory[]
+
+  InstitutionRatingCategory InstitutionRatingCategory[]
+  createdAt                 DateTime                    @default(now())
+}
+
+model ImpactArea {
+  id         Int              @id @default(autoincrement())
+  name       String
+  categories RatingCategory[]
+
+  InstitutionRatingCategory InstitutionRatingCategory[]
+  createdAt                 DateTime                    @default(now())
+}
+
+model RatingCategory {
+  id          Int          @id @default(autoincrement())
+  keyword     String       @unique
+  name        String
+  icon        String
+  description String
+  weight      Int
+  examples    String[]
+  impactAreas ImpactArea[]
+  departments Department[]
+
+  NomineeRating NomineeRating[]
+
+  InstitutionRating InstitutionRating[]
+  createdAt         DateTime            @default(now())
+}
+
+model InstitutionRatingCategory {
+  id          Int          @id @default(autoincrement())
+  keyword     String       @unique
+  name        String
+  icon        String
+  description String
+  weight      Int
+  examples    String[]
+  impactAreas ImpactArea[]
+  departments Department[]
+  createdAt   DateTime     @default(now())
+}
+
+model Comment {
+  id            Int          @id @default(autoincrement())
+  content       String
+  userId        Int
+  nomineeId     Int?
+  institutionId Int?
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id])
+  nominee       Nominee?     @relation(fields: [nomineeId], references: [id])
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+}
