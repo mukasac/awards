@@ -1,16 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs https//pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate https//pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("POSTGRES_PRISMA_URL")
+  url      = env("POSTGRES_URL_NON_POOLING")
 }
 
 model User {
@@ -18,11 +12,11 @@ model User {
   name      String
   email     String              @unique
   password  String
-  image     String?
-  nominated NomineeRating[]
-  reported  InstitutionRating[]
   createdAt DateTime            @default(now())
+  image     String?
   comments  Comment[]
+  reported  InstitutionRating[]
+  nominated NomineeRating[]
 }
 
 model Nominee {
@@ -31,50 +25,41 @@ model Nominee {
   positionId    Int
   institutionId Int
   districtId    Int
-  image         String?
-  rating        NomineeRating[]
-  position      Position        @relation(fields: [positionId], references: [id])
-  institution   Institution     @relation(fields: [institutionId], references: [id])
-  district      District        @relation(fields: [districtId], references: [id])
   status        Boolean         @default(false)
-  evidence      String? // Nullable field for storing evidence
+  evidence      String?
   createdAt     DateTime        @default(now())
+  image         String?
   comments      Comment[]
+  district      District        @relation(fields: [districtId], references: [id])
+  institution   Institution     @relation(fields: [institutionId], references: [id])
+  position      Position        @relation(fields: [positionId], references: [id])
+  rating        NomineeRating[]
 }
 
 model Position {
   id        Int       @id @default(autoincrement())
   name      String
-  nominees  Nominee[]
   createdAt DateTime  @default(now())
+  nominees  Nominee[]
 }
 
 model Institution {
-  id       Int       @id @default(autoincrement())
-  name     String
-  image    String?
-  status   Boolean   @default(false)
-  nominees Nominee[]
-  comments Comment[]
-
-  rating    InstitutionRating[]
+  id        Int                 @id @default(autoincrement())
+  name      String
   createdAt DateTime            @default(now())
+  status    Boolean             @default(false)
+  image     String?
+  comments  Comment[]
+  rating    InstitutionRating[]
+  nominees  Nominee[]
 }
 
 model District {
   id        Int       @id @default(autoincrement())
   name      String    @unique
   region    String
-  nominees  Nominee[]
   createdAt DateTime  @default(now())
-}
-
-enum Severity {
-  Minor       @map("1")
-  Moderate    @map("2")
-  Significant @map("3")
-  Severe      @map("4")
-  Critical    @map("5")
+  nominees  Nominee[]
 }
 
 model NomineeRating {
@@ -87,8 +72,8 @@ model NomineeRating {
   evidence         String
   createdAt        DateTime       @default(now())
   nominee          Nominee        @relation(fields: [nomineeId], references: [id])
-  user             User           @relation(fields: [userId], references: [id])
   ratingCategory   RatingCategory @relation(fields: [ratingCategoryId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
 }
 
 model InstitutionRating {
@@ -101,43 +86,39 @@ model InstitutionRating {
   evidence         String
   createdAt        DateTime       @default(now())
   institution      Institution    @relation(fields: [institutionId], references: [id])
-  user             User           @relation(fields: [userId], references: [id])
   ratingCategory   RatingCategory @relation(fields: [ratingCategoryId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
 }
 
 model Department {
-  id         Int              @id @default(autoincrement())
-  name       String
-  categories RatingCategory[]
-
-  InstitutionRatingCategory InstitutionRatingCategory[]
+  id                        Int                         @id @default(autoincrement())
+  name                      String
   createdAt                 DateTime                    @default(now())
+  InstitutionRatingCategory InstitutionRatingCategory[] @relation("DepartmentToInstitutionRatingCategory")
+  categories                RatingCategory[]            @relation("DepartmentToRatingCategory")
 }
 
 model ImpactArea {
-  id         Int              @id @default(autoincrement())
-  name       String
-  categories RatingCategory[]
-
-  InstitutionRatingCategory InstitutionRatingCategory[]
+  id                        Int                         @id @default(autoincrement())
+  name                      String
   createdAt                 DateTime                    @default(now())
+  InstitutionRatingCategory InstitutionRatingCategory[] @relation("ImpactAreaToInstitutionRatingCategory")
+  categories                RatingCategory[]            @relation("ImpactAreaToRatingCategory")
 }
 
 model RatingCategory {
-  id          Int          @id @default(autoincrement())
-  keyword     String       @unique
-  name        String
-  icon        String
-  description String
-  weight      Int
-  examples    String[]
-  impactAreas ImpactArea[]
-  departments Department[]
-
-  NomineeRating NomineeRating[]
-
-  InstitutionRating InstitutionRating[]
+  id                Int                 @id @default(autoincrement())
+  keyword           String              @unique
+  name              String
+  icon              String
+  description       String
+  weight            Int
+  examples          String[]
   createdAt         DateTime            @default(now())
+  InstitutionRating InstitutionRating[]
+  NomineeRating     NomineeRating[]
+  departments       Department[]        @relation("DepartmentToRatingCategory")
+  impactAreas       ImpactArea[]        @relation("ImpactAreaToRatingCategory")
 }
 
 model InstitutionRatingCategory {
@@ -148,9 +129,9 @@ model InstitutionRatingCategory {
   description String
   weight      Int
   examples    String[]
-  impactAreas ImpactArea[]
-  departments Department[]
   createdAt   DateTime     @default(now())
+  departments Department[] @relation("DepartmentToInstitutionRatingCategory")
+  impactAreas ImpactArea[] @relation("ImpactAreaToInstitutionRatingCategory")
 }
 
 model Comment {
@@ -160,7 +141,15 @@ model Comment {
   nomineeId     Int?
   institutionId Int?
   createdAt     DateTime     @default(now())
-  user          User         @relation(fields: [userId], references: [id])
-  nominee       Nominee?     @relation(fields: [nomineeId], references: [id])
   institution   Institution? @relation(fields: [institutionId], references: [id])
+  nominee       Nominee?     @relation(fields: [nomineeId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+}
+
+enum Severity {
+  Minor       @map("1")
+  Moderate    @map("2")
+  Significant @map("3")
+  Severe      @map("4")
+  Critical    @map("5")
 }
